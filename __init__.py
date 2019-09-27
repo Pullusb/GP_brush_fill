@@ -17,13 +17,13 @@
 
 bl_info = {
 "name": "Brush fill",
-"description": "Add a brush to paint a grease pencil fill and add/erase existing strokes",
+"description": "Add a brush to paint flat grease pencil fills and add/erase existing strokes",
 "author": "Samuel Bernou",
-"version": (0, 1, 2),
+"version": (0, 1, 4),
 "blender": (2, 80, 0),
-"location": "Shortcut ctrl+shift+f > draw (+shift for add, +alt for erase), add your own shortcut with '' ",
+"location": "Select a grease pencil object > 3D view > toolbar > brush fill (+shift for add, +alt for erase)",
 "warning": "This addon need modules opencv and shapely to work",
-"wiki_url": "",
+"wiki_url": "https://github.com/Pullusb/GP_brush_fill",
 "category": "3D View"
 }
 
@@ -997,7 +997,9 @@ class myaddonPrefs(bpy.types.AddonPreferences):
     GPBF_use_material_color : bpy.props.BoolProperty(name="Display material color", 
     description="If available, display material fill color as temporary paint color", default=True)
 
-    GPBF_register_shortcut_default : bpy.props.BoolProperty(name="register default shortcut (Ctrl+shift+F)", description="Use F like Fill. If changed, need to restart blender to take effect\nregister this keymap", default=True)
+    GPBF_register_shortcut_default : bpy.props.BoolProperty(name="register default shortcut (Ctrl+shift+F)", 
+    description="Use F like Fill. If changed, need to restart blender to take effect\nregister this keymap", 
+    default=False)
 
     def draw(self, context):
         layout = self.layout
@@ -1008,7 +1010,7 @@ class myaddonPrefs(bpy.types.AddonPreferences):
         layout.prop(self, "GPBF_cursor_color")
         layout.prop(self, "GPBF_paint_color")
         layout.prop(self, "GPBF_use_material_color")
-        
+
         layout.separator()
         layout.label(text="Keymap management :")
         layout.prop(self, "GPBF_register_shortcut_default")
@@ -1161,100 +1163,3 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-
-
-'''
-# TODO list:
-
-- add a curve pressure for pen
-
-- add thickness as a scene properties (exposed to UI if any)
-
-- add specific material path to use (automaticly added to material of the object if not listed)
-
-- maybe : add a way to handle rapid radius change (like 'F' for classic blender brush.)
-
-- in additive mode : add a shape when nothing is instersected
-
- - Fix bug in coplanar check (sometimes not evaluated as coplanar even)
-  - maybe divide in two function or condition to check without object matrix applyed.
- - option to use a coplanar check:
-    - if not coplanar -> action : ignore / project from view / project on averaged plane
-    - reorder shape list by screen space proximity to stroke starting point
-
-
-- Handle holes (detected Hole shapes goes on a substractive layer on top or two side by side shape)
- - find best naming convention and handling method
-
-- find relative brush size and spacing according to region resolution / pixel density
-
-- re-sample shape to get uniform contour points spacing along line (quite hard)
- - Can be use on single line but in ths case must manage to keep/interpolate point properties...
-
-- test subdivide contour (combination with contour resample)
-
-- Stanby because not reliable with filled shape : handle Surface project mode (raycast on first point to underlying object)
-
-Notes: #might be for a different script...
-- coplanar handling:
-  what to do when multiple strokes have coplanar points but not colanar between them ?
-  need project from view (on centroid or on selected point)
-  need self make coplanar with average normal and point position.
-  might need an option to "straighten" a stroke, rotate it on centroid (not project) so it fit chosen object axis
-  very optional: might be cool quantify "coplanarity" to allow coplanar-tolerance contitions.
-  very optional: align view to selected stroke normal
-
-# -------
-# TODO UI
-# -------
-- Display thickness and spacing
-
-- material selector (to specidy what material is gonna be use for the paint)
-or just get/create a layer below (with name convention to allow multi "color layer" below layer)
--   material selector UI
-    # select a material that use the fill (if not selected)
-    # OR select a predefined brush (that will have a material locked)
-    # but there will be different fill.
-    # might be cool to create a "material selector" field in UI later.
-    #generate stroke (what to do with pressure ?...)
-
-Optional - properties to choose opengl-brush color (or get it from active/locked material)
-
-
-# -------
-# -- Done
-# -------
-
-- test for more precision : Upscale the points coordinates and the empty numpy array *before* tracing the the circles in the numpy array, then trace and downscale.
-- omit final point in shape on gp stroke creation.
-- add pressure control
-
-add/substract (erase) stroke - (shapely)
- - handle when shape is contain (and not intersected)
- - Fix shape when substracted on multiple shape simultaneously.
- - add angle warning
-- stop without error if not enough element in mouse path list
-
-- reproject stroke on axis plane (if axis locked) or with intersected stroke (first ?)
-    - respect stroke placement
-    notes:
-        #How to draw
-        settings = bpy.context.scene.tool_settings
-
-        #Drawing plane : Drawplane orientation (normal)
-        settings.gpencil_sculpt.lock_axis = 'VIEW'
-        settings.gpencil_sculpt.lock_axis = 'AXIS_Y'# front (X-Z)
-        settings.gpencil_sculpt.lock_axis = 'AXIS_X'# side (Y-Z)
-        settings.gpencil_sculpt.lock_axis = 'AXIS_Z'# top (X-Y)
-        settings.gpencil_sculpt.lock_axis = 'CURSOR'
-
-        #Stroke placement : "location" (depth)
-        settings.gpencil_stroke_placement_view3d = 'ORIGIN'
-        settings.gpencil_stroke_placement_view3d = 'CURSOR'
-        settings.gpencil_stroke_placement_view3d = 'SURFACE'
-        settings.gpencil_stroke_placement_view3d = 'STROKE'
-
-## paint HUD
-
-- show operation type (+, -, x) if shift, alt
-'''
