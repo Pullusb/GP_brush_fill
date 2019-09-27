@@ -19,7 +19,7 @@ bl_info = {
 "name": "Brush fill",
 "description": "Add a brush to paint flat grease pencil fills and add/erase existing strokes",
 "author": "Samuel Bernou",
-"version": (0, 1, 4),
+"version": (0, 1, 5),
 "blender": (2, 80, 0),
 "location": "Select a grease pencil object > 3D view > toolbar > brush fill (+shift for add, +alt for erase)",
 "warning": "This addon need modules opencv and shapely to work",
@@ -47,6 +47,11 @@ from gpu_extras.presets import draw_circle_2d
 
 from bpy.types import Operator
 
+# External module import
+import cv2#openCV
+import shapely### shapely
+from shapely.geometry import LineString, MultiPoint, Point, Polygon, MultiPolygon
+from shapely.ops import split, cascaded_union
 
 
 # -----------------
@@ -281,7 +286,8 @@ def add_proj_stroke(s, frame, plane_co, plane_no, mat_id=None):
     ns.points.add(pts_to_add)
     #set coordinate
     ns.points.foreach_set('co', coords_3d_flat)
-
+    print('ns: ', ns)
+    
 
 
 def add_proj_multiple_strokes(stroke_list, gp=None, layer=None, use_current_frame=True, plane_co=None, plane_no=None, mat_id=None):
@@ -360,6 +366,7 @@ def gp_draw(brush, mode='NEW'):
     if not layer:#create one ?> gpl.new('GP_Layer_fill')#,set_active=True#default
         return 'No layer to draw in'
 
+    frame = layer.active_frame
     if scn.GPBF_use_fill_layer:#Do things on 'fill' layers only
         if not 'fill' in layer.info.lower():
             fillname = layer.info + '_fill'
@@ -369,10 +376,10 @@ def gp_draw(brush, mode='NEW'):
                 gpl.move(fill_layer, 'DOWN')#created above active so move down once
                 fill_layer.frames.new(frame.frame_number, active=True)#create frame at position of existing frame on top layer
                 print('Created fill layer:', fill_layer.info)
+            #update layer and frame
             layer = fill_layer
+            frame = layer.active_frame
 
-
-    frame = layer.active_frame
     if not frame:#create frame
         frame = layer.frames.new(scn.frame_current, active=True)
     
@@ -435,7 +442,7 @@ def gp_draw(brush, mode='NEW'):
         #get existing strokes as polygons and check if instersect
 
         #make a list of lists  [ [index, polygon, stroke object], ... ]
-        all_pshapes = [[i, Polygon([location_to_region(mat @ p.co) for p in s.points]), s] for i, s in enumerate(strokes)]
+        all_pshapes = [[i, Polygon([location_to_region(mat @ p.co) for p in s.points]), s] for i, s in enumerate(strokes) if len(s.points) > 3]
 
         #filter intersecting shapes
         pshapes = []
@@ -662,8 +669,9 @@ def draw_callback_px(self, context):
             blf.draw(font_id, '+')
 
     ## draw text debug infos
-    # blf.position(font_id, 15, 30, 0)
-    # blf.size(font_id, 20, 72)
+    blf.position(font_id, 15, 30, 0)
+    blf.size(font_id, 20, 72)
+    blf.draw(font_id, f'Flat paint -  radius: {scn.GPBF_radius} spacing: {scn.GPBF_spacing}')
     # blf.draw(font_id, f'radius: {scn.GPBF_radius} spacing: {scn.GPBF_spacing} points: {self.points_num} mouse_steps: {len(self.mouse_path)} lenght: {self.distance}')
 
 
@@ -757,19 +765,22 @@ class GP_OT_draw_fill(bpy.types.Operator):
                 simplify = scn.GPBF_brush_approx / 10000
 
                 print('simplify: ', scn.GPBF_brush_approx, '>', simplify)
-                print(type(contours[0]))
-                print(contours[0][:2])
-                # contours = [i/rfactor for i in contours]
-                # print(contours[0][:2])
-                print(type(contours[0]))
+
                 #ref : https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_contours/py_contour_features/py_contour_features.html#contour-approximation
                 contours = [cv2.approxPolyDP(cnt, simplify*cv2.arcLength(cnt,True), True) for cnt in contours]
                 # contours = [cv2.approxPolyDP(np.array([c/rfactor for c cnt]), simplify*cv2.arcLength(cnt,True), True) for cnt in contours]
-                print(type(contours[0]))
-                print(contours[0][:2])
+
+                if not contours:
+                    print('No contour found on brush, exit modal')
+                    return {'CANCELLED'}
+                    #self.report({'ERROR'}, 'no contour in brush list')
+                    #return {'RUNNING_MODAL'}
+                    
+                # print(type(contours[0]))
+                # print(contours[0][:2])
                 contours = [i/rfactor for i in contours]
-                print(contours[0][:2])
-                print(type(contours[0]))
+                # print(contours[0][:2])
+
                 # contours = [cv2.approxPolyDP(cnt / rfactor, simplify*cv2.arcLength(cnt / rfactor,True), True) for cnt in contours]
 
                 '''#debug draw contour in bl_image
@@ -908,6 +919,7 @@ class GP_OT_draw_fill(bpy.types.Operator):
     def invoke(self, context, event):
         # print('\nSTARTED')
 
+        """#problem, import are not transfered to modal. just rely on classic import...
         # here check if opencv and shapely are Ok
         module_missing = []
         import importlib
@@ -924,6 +936,7 @@ class GP_OT_draw_fill(bpy.types.Operator):
         import shapely### shapely
         from shapely.geometry import LineString, MultiPoint, Point, Polygon, MultiPolygon
         from shapely.ops import split, cascaded_union
+        """
         
         if context.area.type == 'VIEW_3D':
             args = (self, context)
@@ -977,11 +990,11 @@ class GP_OT_draw_fill(bpy.types.Operator):
             return {'CANCELLED'}
 
 
-class myaddonPrefs(bpy.types.AddonPreferences):
+class GPBF_addon_prefs(bpy.types.AddonPreferences):
     bl_idname = __name__
     #some_bool_prop to display in the addon pref
 
-    GPBF_paint_color : bpy.props.FloatVectorProperty(name="Brush temporary paint color", 
+    GPBF_paint_color : bpy.props.FloatVectorProperty(name="Brush paint color", 
     description="Change the 'painting' color of the brush", 
     default=(0.0, 0.5, 0.5, 1.0), step=3, precision=2, subtype='COLOR', size=4)
     
@@ -1004,13 +1017,16 @@ class myaddonPrefs(bpy.types.AddonPreferences):
     def draw(self, context):
         layout = self.layout
         layout.label(text='Cosmetic changes :')
-
-        layout.label(text="These preferences does not affect aspect of final stroke (even if the temporary displayed brush and paint seem to be very rough)")
+        box = layout.box()
+        box.label(text="Note : These preferences does not affect aspect of final stroke,")
+        box.label(text="even if the temporary displayed brush and paint apperas different")
         layout.prop(self, "GPBF_brush_display_res")
-        layout.prop(self, "GPBF_cursor_color")
-        layout.prop(self, "GPBF_paint_color")
+        row = layout.row(align=True)
+        row.prop(self, "GPBF_cursor_color")
+        row.prop(self, "GPBF_paint_color")
         layout.prop(self, "GPBF_use_material_color")
 
+        ## keymap handling
         layout.separator()
         layout.label(text="Keymap management :")
         layout.prop(self, "GPBF_register_shortcut_default")
@@ -1093,7 +1109,8 @@ GP_OT_draw_fill,
 GP_PT_brush_fill_panel,
 GP_PT_brush_fill_quality_subpanel,
 GP_PT_brush_fill_filter_subpanel,
-GPBF_OT_open_doc
+GPBF_OT_open_doc,
+GPBF_addon_prefs
 )
 
 addon_keymaps = []
@@ -1121,7 +1138,7 @@ def register():
     default=False)
     
     bpy.types.Scene.GPBF_filter_only_fill = bpy.props.BoolProperty(name="Only affect fill ", description="Affect only strokes that have a fill active in used material", 
-    default=False)
+    default=True)#buggy hen interacting with normal strokes
     
     bpy.types.Scene.GPBF_filter_only_selected_mat = bpy.props.BoolProperty(name="Only selected mat", description="Affect only strokes that use current selected material", 
     default=False)

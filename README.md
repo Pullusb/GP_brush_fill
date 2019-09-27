@@ -4,6 +4,8 @@ Blender addon - Grease pencil flat brush that act like a 2D brush for fill mater
 **[Download latest](https://github.com/Pullusb/GP_brush_fill/archive/master.zip)**
 
 /!\ Need external modules (see section below [_How to get opencv and shapely modules_](#how-to-get-opencv-and-shapely-modules))
+Disclaimer : This addon is a WIP and highly experimental.  
+It's to be considered as a workaround until better native blender solution exists for flat coloring.
 
 ---  
 
@@ -12,13 +14,12 @@ Blender addon - Grease pencil flat brush that act like a 2D brush for fill mater
 Paint Grease pencil closed flat stroke with a 2D brush on a plane defined by same projecting option as usual grease pencil.
 Projection modes "*Surface*" and "*Stroke*" are not supported (act as if *Origin* is selected).
 
-This addon is to be considered as a workaround until better native blender solution exists for flat coloring.
-
 ### Usage
 
 The UI panel appears once a grease pencil object is selected, in the left toolbar.
-The brush fill modal operator is lauched with a button `brush fill`.
-You can bind a shortcut to it by right clicking on the brush fill button and sue `add shortcut`
+
+The brush fill modal operator is lauched with a button `brush fill`.  
+You can bind a shortcut to it by right clicking on the brush fill button > add shortcut  
 In the addon preferences you can enable an option to bind a default `ctrl+shit+F` shortcut  
 
 `click` : Normal paint, add grease pencil stroke with current selected materials.
@@ -32,10 +33,20 @@ This modes have filter available in user interface (filter what types of grease 
 
 `esc` or `right-click` : Leave the modal
 
+`[/]`, `W/E`, `numpad -/+` or `mousewheel down/up` : change radius of the brush
+
+`S/D` : Change spacing value
+
 ### Limitations
 
-Everything happens in the screen space visible part of the viewport that is locked during the modal.
-Meaning that you can't move during the paint and the brush is clamped to viewport border.
+Everything happens in the screen space visible part of the viewport that is locked during the modal.  
+You can't move view during the painting and the brush is clamped to viewport border.
+
+Impossible erase plain stroke without fill (use native eraser for that)
+
+Impossible to add holes in shapes when erasing
+
+In additive/substractive mode, closing a draw shape (like a lasso) will englobe everything inside.
 
 ### Important technical note
 
@@ -71,9 +82,8 @@ opencv: https://pypi.org/project/opencv-python/
 shapely : https://pypi.org/project/Shapely/
 
 For windows user there is the alternative solution of the [_Unofficial Windows Binaries for Python Extension Packages_](https://www.lfd.uci.edu/~gohlke/pythonlibs/).
-Download `whl` of [opencv](https://www.lfd.uci.edu/~gohlke/pythonlibs/#opencv) and [shapely](https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely). In the list choose the last version that is compatible with your system. `amd64` for 64bits else get `win 32`.
+Download `whl` of [opencv](https://www.lfd.uci.edu/~gohlke/pythonlibs/#opencv) and [shapely](https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely). In the list choose the last version that is compatible with your system. `amd64` for 64bits else get `win 32`.  
 Then open a terminal in the folder containing these file and run `pip install ThePackage.whl` ([more info on Wheel installation](https://pip.pypa.io/en/latest/user_guide/#installing-from-wheels))
-
 
 ### Locate modules
 
@@ -88,8 +98,8 @@ Now copy the folder `cv2` and `shapely` in you blender module folder
 Don't mind the folders ending with `.dist-info`  
 Blender module folder is in temp directory and (there is another in install directory).  
 To locate it open blender and in the python interactive console and run `print(bpy.utils.user_resource('SCRIPTS'))` (or use my [devtool](https://github.com/Pullusb/devTools) addon button "print resources filepath" ;) )
-Copy the modules in the `modules` folder inside `scripts` (if theres no "modules" folder just create it).
-The path would be something like `.../Blender/2.80/scripts/modules/`
+Copy the modules in the `modules` folder inside `scripts` (if theres no "modules" folder just create it).  
+The path would be something like `.../Blender/2.80/scripts/modules/`  
 
 Once modules are in this folder you can use them right away (no need to restart blender). Just launch the operator. \o/
 
