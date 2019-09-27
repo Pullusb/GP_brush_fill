@@ -30,10 +30,12 @@ This modes have filter available in user interface (filter what types of grease 
 
 `alt` + `click` : Eraser, paint in substractive mode. merge crossed strokes too
 
+`esc` or `right-click` : Leave the modal
+
 ### Limitations
 
 Everything happens in the screen space visible part of the viewport that is locked during the modal.
-Meaning that you can't move during the pain and the brush is clamped to viewport border.
+Meaning that you can't move during the paint and the brush is clamped to viewport border.
 
 ### Important technical note
 
@@ -47,13 +49,15 @@ This addon rely on external python modules :
 
 ## How to get opencv and shapely modules
 
-Note : the package name for opencv is `opencv-python`, or `opencv-contrib-python` for extended version
+Note : the package name for opencv is `opencv-python`, or `opencv-contrib-python` for extended version.  
 the module folder will be named `cv2`
 
-You need to have python installed on your machine to install with Pip:
-[Detailed infos on module installation here](https://docs.python.org/3/installing/index.html)
-The local python version need to be the same version as blender python : `3.7`.
-To check pip python version enter : `pip --version` or `pip -V`
+You need to have python installed on your machine to install with Pip:  
+[Detailed infos on module installation here](https://docs.python.org/3/installing/index.html)  
+
+The local python version need to be the same version as blender python : `3.7`.  
+To check pip python version enter : `pip --version` or `pip -V`  
+
 If your version is ok, run this lines and go to the _Place modules in blender_ section:
 `pip install opencv-contrib-python`
 `pip install shapely`
@@ -73,16 +77,16 @@ Then open a terminal in the folder containing these file and run `pip install Th
 
 ### Locate modules
 
-Once installed you need to copy module files from your local python into your blender module folder.
-Those file are stored in the python version directory "site-packages".
-To easily locate them use : `pip show shapely`, that will display their location.
+Once installed you need to copy module files from your local python into your blender module folder.  
+Those file are stored in the python version directory "site-packages".  
+To easily locate them use : `pip show shapely`, that will display their location.  
 ex: On windows it will probably be something like  `C:/Users/User/AppData/Local/Programs/Python/Python-version/Lib/site-packages`
 
 ### Place modules in blender
 
-Now copy the folder `cv2` and `shapely` in you blender module folder
-Don't mind the folders ending with `.dist-info`
-Blender module folder is in temp directory and (there is another in install directory).
+Now copy the folder `cv2` and `shapely` in you blender module folder  
+Don't mind the folders ending with `.dist-info`  
+Blender module folder is in temp directory and (there is another in install directory).  
 To locate it open blender and in the python interactive console and run `print(bpy.utils.user_resource('SCRIPTS'))` (or use my [devtool](https://github.com/Pullusb/devTools) addon button "print resources filepath" ;) )
 Copy the modules in the `modules` folder inside `scripts` (if theres no "modules" folder just create it).
 The path would be something like `.../Blender/2.80/scripts/modules/`
