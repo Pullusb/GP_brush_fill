@@ -936,7 +936,7 @@ class GP_OT_draw_fill(bpy.types.Operator):
         from shapely.geometry import LineString, MultiPoint, Point, Polygon, MultiPolygon
         from shapely.ops import split, cascaded_union
         """
-        if context.area.spaces[0].region_3d.is_perspective:
+        if not context.area.spaces[0].region_3d.is_perspective:
             self.report({'ERROR'}, "Impossible to paint in orthographic view")
             return {'CANCELLED'}
 

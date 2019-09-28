@@ -42,13 +42,12 @@ This modes have filter available in user interface (filter what types of grease 
 Everything happens in the screen space visible part of the viewport that is locked during the modal.  
 You can't move view during the painting and the brush is clamped to viewport border.
 
-Impossible erase plain stroke without fill (use native eraser for that)
-
-Impossible to add holes in shapes when erasing
-
-In additive/substractive mode, closing a draw shape (like a lasso) will englobe everything inside.
-
-When merging shapes it deletes points information (thickness/pressure/etc). Keep in mind that it delete crossed sotrkes to create a new one.
+For now :
+- Only work in perspective view (will raise an error message)
+- Impossible erase plain stroke without fill (use native eraser for that)
+- Impossible to add holes in shapes when erasing
+- In additive/substractive mode, closing a draw shape (like a lasso) will englobe everything inside.
+- When merging shapes it deletes points information (thickness/pressure/etc). Keep in mind that it delete crossed strokes to create a new one.
 
 ### Important technical note
 
@@ -108,7 +107,12 @@ Once modules are in this folder you can use them right away (no need to restart 
 ---
 
 #### Todo:
-- add a curve pressure for pen
+
+- Make it orthographic view compatible.
+
+- Work with stroke without fill
+
+- add a curve pressure for tablet pen
 
 - add thickness as a scene properties (exposed to UI if any)
 
