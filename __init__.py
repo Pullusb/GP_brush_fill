@@ -19,7 +19,7 @@ bl_info = {
 "name": "Brush fill",
 "description": "Add a brush to paint flat grease pencil fills and add/erase existing strokes",
 "author": "Samuel Bernou",
-"version": (0, 1, 5),
+"version": (0, 1, 7),
 "blender": (2, 80, 0),
 "location": "Select a grease pencil object > 3D view > toolbar > brush fill (+shift for add, +alt for erase)",
 "warning": "This addon need modules opencv and shapely to work",
@@ -286,7 +286,6 @@ def add_proj_stroke(s, frame, plane_co, plane_no, mat_id=None):
     ns.points.add(pts_to_add)
     #set coordinate
     ns.points.foreach_set('co', coords_3d_flat)
-    print('ns: ', ns)
     
 
 
@@ -337,7 +336,7 @@ def add_proj_multiple_strokes(stroke_list, gp=None, layer=None, use_current_fram
         
         add_proj_stroke(s, target_frame, plane_co, plane_no, mat_id=mat_id)
 
-    print(len(stroke_list), 'strokes generated')
+    # print(len(stroke_list), 'strokes generated')
 
 
 
@@ -354,7 +353,7 @@ def gp_draw(brush, mode='NEW'):
     obj = bpy.context.object
     if obj.type != 'GPENCIL':
         #create a new object or return error ? - return for now
-        print('active Grease Pencil object found')
+        print('no Grease Pencil object active')
         return #silent return... else do return 'no active Grease Pencil object found'
 
     mat = obj.matrix_world
@@ -512,8 +511,8 @@ def gp_draw(brush, mode='NEW'):
 
             if len(pshapes) == 1:
                 fused = pshapes[0][1].difference(pbrush)
-                print('fused: ', fused.geom_type)
-                print('fused.is_empty: ', fused.is_empty)
+                # print('fused: ', fused.geom_type)
+                # print('fused.is_empty: ', fused.is_empty)
             else:
                 npoly = []
                 for shape in pshapes:
@@ -521,7 +520,7 @@ def gp_draw(brush, mode='NEW'):
 
                     if diff_result.geom_type == 'MultiPolygon':
                         for subpoly in diff_result:
-                            print('subpoly: ', subpoly.geom_type)
+                            # print('subpoly: ', subpoly.geom_type)
                             npoly.append(subpoly)
                     else:
                         npoly.append(diff_result)
@@ -559,7 +558,7 @@ def gp_draw(brush, mode='NEW'):
 
         # Check Angle from view
         view_direction = view3d_utils.region_2d_to_vector_3d(bpy.context.region, bpy.context.region_data, (bpy.context.region.width/2.0, bpy.context.region.height/2.0))
-        print('plane_no: ', plane_no)
+        # print('plane_no: ', plane_no)
         angle = math.degrees(view_direction.angle(plane_no))
         # correct angle value when painting from other side (seems a bit off...)
         if angle > 90: angle = abs(90 - (angle - 90))
@@ -571,7 +570,7 @@ def gp_draw(brush, mode='NEW'):
         #over angle warning 
         elif angle > 45:
             mess = f"painting on a surface with angle over: 45 degrees ({angle:.2f})"
-            print(mess)
+            # print(mess)
             warn.append(mess)
             
         print('angle from view: {:.2f}'.format(angle)) 
@@ -764,7 +763,7 @@ class GP_OT_draw_fill(bpy.types.Operator):
                 # simplify = round( transfer_value(scn.GPBF_brush_approx, 0, 100, 0.0003, 0.01) , 5)
                 simplify = scn.GPBF_brush_approx / 10000
 
-                print('simplify: ', scn.GPBF_brush_approx, '>', simplify)
+                # print('simplify: ', scn.GPBF_brush_approx, '>', simplify)
 
                 #ref : https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_contours/py_contour_features/py_contour_features.html#contour-approximation
                 contours = [cv2.approxPolyDP(cnt, simplify*cv2.arcLength(cnt,True), True) for cnt in contours]
@@ -937,7 +936,10 @@ class GP_OT_draw_fill(bpy.types.Operator):
         from shapely.geometry import LineString, MultiPoint, Point, Polygon, MultiPolygon
         from shapely.ops import split, cascaded_union
         """
-        
+        if context.area.spaces[0].region_3d.is_perspective:
+            self.report({'ERROR'}, "Impossible to paint in orthographic view")
+            return {'CANCELLED'}
+
         if context.area.type == 'VIEW_3D':
             args = (self, context)
             # Add the region OpenGL drawing callback
