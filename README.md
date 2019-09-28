@@ -49,9 +49,12 @@ You can't move view during the painting and the brush is clamped to viewport bor
 For now :
 - Only work in perspective view (tring in ortho view will raise an error message)
 - Impossible to erase plain stroke without fill (use native eraser for that)
+- No undo-stack
+- since everything eslse is lock, need to leave the modal with right clic or esc to perform other actions.
 - Impossible to add holes in shapes when erasing
 - In additive/substractive mode, closing a draw shape (like a lasso) will englobe everything inside.
-- When merging shapes it deletes points information (thickness/pressure/etc). Keep in mind that it delete crossed strokes to create a new one.
+- When merging shapes it deletes points informations (thickness/pressure/etc)
+- Generally keep in mind that it delete crossed strokes to create a new one (for the same reason, it can messup with the depth order of your fills).
 
 ### Important technical note
 
