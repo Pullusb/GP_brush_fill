@@ -14,6 +14,10 @@ It's to be considered as a workaround until better native blender solution exist
 Paint Grease pencil closed flat stroke with a 2D brush on a plane defined by same projecting option as usual grease pencil.
 Projection modes "*Surface*" and "*Stroke*" are not supported (act as if *Origin* is selected).
 
+![brush fill demo gif](https://github.com/Pullusb/images_repo/raw/master/fill_blends.gif)
+
+---
+
 ### Usage
 
 The UI panel appears once a grease pencil object is selected, in the left toolbar.
@@ -43,8 +47,8 @@ Everything happens in the screen space visible part of the viewport that is lock
 You can't move view during the painting and the brush is clamped to viewport border.
 
 For now :
-- Only work in perspective view (will raise an error message)
-- Impossible erase plain stroke without fill (use native eraser for that)
+- Only work in perspective view (tring in ortho view will raise an error message)
+- Impossible to erase plain stroke without fill (use native eraser for that)
 - Impossible to add holes in shapes when erasing
 - In additive/substractive mode, closing a draw shape (like a lasso) will englobe everything inside.
 - When merging shapes it deletes points information (thickness/pressure/etc). Keep in mind that it delete crossed strokes to create a new one.
@@ -108,7 +112,7 @@ Once modules are in this folder you can use them right away (no need to restart 
 
 #### Todo:
 
-- Make it orthographic view compatible.
+- Make it orthographic view compatible (if possible with screen coordinates calculations).
 
 - Work with stroke without fill
 
