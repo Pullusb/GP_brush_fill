@@ -3,7 +3,7 @@ Blender addon - Grease pencil flat brush that act like a 2D brush for fill mater
 
 **[Download latest](https://github.com/Pullusb/GP_brush_fill/archive/master.zip)**
 
-/!\ Need external modules (see section below [_How to get opencv and shapely modules_](#how-to-get-opencv-and-shapely-modules))
+/!\ Need external modules (see section below [_How to get opencv and shapely modules_](#how-to-get-opencv-and-shapely-modules))  
 Disclaimer : This addon is a WIP and highly experimental.  
 It's to be considered as a workaround until better native blender solution exists for flat coloring.
 
@@ -114,6 +114,8 @@ Once modules are in this folder you can use them right away (no need to restart 
 ---
 
 #### Todo:
+
+- Replace the stroke in 3D view (adding a fill to a previous one make it pop to the top)
 
 - Make it orthographic view compatible (if possible with screen coordinates calculations).
 
