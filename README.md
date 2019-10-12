@@ -168,6 +168,13 @@ Once modules are in this folder you can use them right away (no need to restart 
         generate stroke (what to do with pressure ?...)
 
 #### Done:
+
+- 2019-10-12 - 0.1.8:
+  - 
+  - Add undo step on each stroke, can now safely ctrl+Z after leaving modal without losing all last strokes !
+  - Changed panel from toolbar (T panel) to sidebar (N panel).
+
+
 - test for more precision : Upscale the points coordinates and the empty numpy array before tracing the the circles in the numpy array, then trace and downscale.
 - omit final point in shape on gp stroke creation.
 - add pressure control for tablets
@@ -182,6 +189,7 @@ Once modules are in this folder you can use them right away (no need to restart 
     - respect stroke placement
 
 - show operation type (+, -, x) if shift, alt
+
 
 <!-- notes:
     #How to draw

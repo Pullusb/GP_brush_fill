@@ -19,7 +19,7 @@ bl_info = {
 "name": "Brush fill",
 "description": "Add a brush to paint flat grease pencil fills and add/erase existing strokes",
 "author": "Samuel Bernou",
-"version": (0, 1, 7),
+"version": (0, 1, 8),
 "blender": (2, 80, 0),
 "location": "Select a grease pencil object > 3D view > toolbar > brush fill (+shift for add, +alt for erase)",
 "warning": "This addon need modules opencv and shapely to work",
@@ -429,6 +429,8 @@ def gp_draw(brush, mode='NEW'):
     ### BRUSH (should be a single nparray poly)
     ## pbrushs = [Polygon(b) for b in brushs] #cascade merge brush but maybe still multi...
 
+    pshapes = []#out of statement so can check for additive mode later 
+
     if mode == 'NEW':
         new=brush#just assign brush np_array stroke
 
@@ -444,7 +446,7 @@ def gp_draw(brush, mode='NEW'):
         all_pshapes = [[i, Polygon([location_to_region(mat @ p.co) for p in s.points]), s] for i, s in enumerate(strokes) if len(s.points) > 3]
 
         #filter intersecting shapes
-        pshapes = []
+        
         gpmatid = None
         gpmat = None
         if len(obj.data.materials):
@@ -465,11 +467,17 @@ def gp_draw(brush, mode='NEW'):
                 pshapes.append(p)
 
 
-        if not pshapes:
-            print('brush not intersecting any strokes or stroke matching with filters')
-            return #just silent return
-            # return 'brush not intersecting any strokes'
+    if not pshapes and mode == 'SUB':
+        print('brush not intersecting any strokes or stroke matching with filters')
+        return #just silent return
+        # return 'brush not intersecting any strokes'
 
+    if not pshapes and mode == 'ADD':
+        print('Additive mode with no overlap detected, adding a new stroke')
+        mode = 'NEW'#no crossed stroke so create a new one
+        new=brush#use brush
+
+    if pshapes:
         if scn.GPBF_use_crossed_mat:
             # Get the material of the first stroke in list. a bit random but no good solution here...
             mat_id = pshapes[0][2].material_index
@@ -572,8 +580,8 @@ def gp_draw(brush, mode='NEW'):
             mess = f"painting on a surface with angle over: 45 degrees ({angle:.2f})"
             # print(mess)
             warn.append(mess)
-            
-        print('angle from view: {:.2f}'.format(angle)) 
+        
+        if angle > 5: print('angle from view: {:.2f}'.format(angle)) 
 
     if new:
         add_proj_multiple_strokes(new, layer=layer, plane_co=plane_co, plane_no=plane_no, mat_id=mat_id)
@@ -679,6 +687,7 @@ class GP_OT_draw_fill(bpy.types.Operator):
     bl_idname = "view3d.gp_fill_brush_draw"
     bl_label = "Brush fill"
     bl_description = "Draw/add/erase filled stroke.\nShortcuts: ctrl+shift+F\nUse shift to add, alt to erase\nChange radius with mousewheel or []"
+    bl_options = {"REGISTER", "UNDO"}
 
     pressed_key = 'NOTHING'
     pressed_alt = False
@@ -724,6 +733,10 @@ class GP_OT_draw_fill(bpy.types.Operator):
             #while pushed, variable pressed stay on...
             if event.value == 'RELEASE':
                 #if release, stop and do the thing !
+                
+                ### UNDO STEP push before creating new stroke
+                bpy.ops.ed.undo_push()
+                
                 self.pen_radius = scn.GPBF_radius#show max radius when not drawing
 
                 if not self.all_points:
@@ -961,7 +974,7 @@ class GP_OT_draw_fill(bpy.types.Operator):
             # self.crosshair_resolution = 12#hardcode for now(4,8,12,16...) keep multiple of 4
             self.crosshair_resolution = prefs.GPBF_brush_display_res * 4
 
-            self.shapely_buffer_res = int(self.crosshair_resolution / 4)# convert to shapely buffer res (-> number * 4)
+            # self.shapely_buffer_res = int(self.crosshair_resolution / 4)# convert to shapely buffer res (-> number * 4)
 
             #self.crosshair_indices = [(0,i+1, i+2) for i in range(resolution*4-1)]+[(0,resolution*4, 1)]
             self.crosshair_indices = [(0,i+1, i+2) for i in range(self.crosshair_resolution-1)] + [(0,self.crosshair_resolution, 1)]
@@ -1044,8 +1057,8 @@ class GP_PT_brush_fill_panel(bpy.types.Panel):
     # bl_idname = "GP_PT_brush_fill_panel"# identifier, if ommited, takes the name of the class.
     bl_label = "Brush fill"# title
     bl_space_type = "VIEW_3D"
-    bl_region_type = "TOOLS"#toolbar -  "UI" for sidebar
-    # bl_category = "Tool"#name of the tab
+    bl_region_type = "UI"#toolbar -  "TOOLS" for sidebar
+    bl_category = "Gpencil"#name of the tab
 
     @classmethod
     def poll(cls, context):
@@ -1075,8 +1088,8 @@ class GP_PT_brush_fill_quality_subpanel(bpy.types.Panel):
     bl_label = "Quality options"# title
     bl_parent_id = "GP_PT_brush_fill_panel"
     bl_space_type = 'VIEW_3D'
-    bl_region_type = 'TOOLS'#'UI'
-    #bl_category = "Tool"
+    bl_region_type = 'UI'#'TOOLS'
+    bl_category = "Gpencil"
 
     def draw(self, context):
         layout = self.layout
@@ -1089,8 +1102,8 @@ class GP_PT_brush_fill_filter_subpanel(bpy.types.Panel):
     bl_label = "Filter Add/Sub strokes"#"Strokes filters"
     bl_parent_id = "GP_PT_brush_fill_panel"
     bl_space_type = 'VIEW_3D'
-    bl_region_type = 'TOOLS'#'UI'
-    #bl_category = "Tool"
+    bl_region_type = 'UI'#'TOOLS'
+    bl_category = "Gpencil"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
@@ -1119,30 +1132,40 @@ addon_keymaps = []
 
 def register():
     #properties basic settings
-    bpy.types.Scene.GPBF_radius = bpy.props.IntProperty(name="Radius", description="Radius of the fill brush\nUse [/], W/E, numpad -/+ or mousewheel down/up to modify during draw", default=10, min=1, max=500, soft_min=0, soft_max=300, step=1)#, options={'HIDDEN'}#subtype = 'PIXEL' ?
-    bpy.types.Scene.GPBF_spacing = bpy.props.IntProperty(name="Spacing", description="Spacing of the fill brush along draw movement\nUse S/D to modify during draw", default=2, min=0, max=100, soft_min=1, soft_max=50, step=1)#, options={'HIDDEN'}#subtype = 'PIXEL' ?
+    bpy.types.Scene.GPBF_radius = bpy.props.IntProperty(name="Radius", 
+    description="Radius of the fill brush\nUse [/], W/E, numpad -/+ or mousewheel down/up to modify during draw", 
+    default=12, min=1, max=500, soft_min=0, soft_max=300, step=1)#, options={'HIDDEN'}#subtype = 'PIXEL' ?
+
+    bpy.types.Scene.GPBF_spacing = bpy.props.IntProperty(name="Spacing", 
+    description="Spacing of the fill brush along draw movement\nUse S/D to modify during draw", 
+    default=2, min=0, max=100, soft_min=1, soft_max=50, step=1)#, options={'HIDDEN'}#subtype = 'PIXEL' ?
 
     #paint option
-    bpy.types.Scene.GPBF_use_fill_layer = bpy.props.BoolProperty(name="Paint on fill layer", description="If not 'fill' in layer name, add new strokes to a layer 'active_layer_name' + '_fill', create if necessary", 
+    bpy.types.Scene.GPBF_use_fill_layer = bpy.props.BoolProperty(name="Paint on fill layer", 
+    description="If not 'fill' in layer name, add new strokes to a layer 'active_layer_name' + '_fill', create if necessary", 
     default=False)
 
     #quality settings
-    bpy.types.Scene.GPBF_resolution_factor = bpy.props.IntProperty(name="Definition multiply", description="more precise painting, add definition at the cost of speed (at the moment of releasing pencil).\nVirtually upscale pixel resolution by given factor (before converting pixels to polygons)\n/!\ You should lower approximation as you increase this value", 
-    default=2, min=1, max=20, soft_min=1, soft_max=12, step=1)
+    bpy.types.Scene.GPBF_resolution_factor = bpy.props.IntProperty(name="Definition multiply", 
+    description="More precise painting, add definition at the cost of speed (at the moment of releasing pencil).\nVirtually upscale pixel resolution by given factor (before converting pixels to polygons)\n/!\ You should lower approximation as you increase this value", 
+    default=4, min=1, max=20, soft_min=1, soft_max=12, step=1)
 
     bpy.types.Scene.GPBF_brush_approx = bpy.props.FloatProperty(name="Shape approx",
     description="Approximation of the painted shape (when converting from pixel to GP polygon).\nHigh value means more approximate, value too low make the pixel visible, usually keep between\nHints: you can enter value above 100 for greater approximation",
-    default=14, min=0, max=1000, soft_min=0, soft_max=100, step=1, precision=1, subtype='NONE', unit='NONE')
+    default=10, min=0, max=1000, soft_min=0, soft_max=100, step=1, precision=1, subtype='NONE', unit='NONE')
     # realvalues : default=0.0015, min=0.0, max=0.1, soft_min=0.0014, soft_max=0.05, step=0.01, precision=4
 
     #filter settings
-    bpy.types.Scene.GPBF_use_crossed_mat = bpy.props.BoolProperty(name="Keep existing material", description="In additive or eraser mode, take the material of crossed object when recreating the line\n/!\ If multiple material crossed this will be random !",
+    bpy.types.Scene.GPBF_use_crossed_mat = bpy.props.BoolProperty(name="Keep existing material", 
+    description="In additive or eraser mode, take the material of crossed object when recreating the line\n/!\ If multiple material crossed this will be random !",
     default=False)
     
-    bpy.types.Scene.GPBF_filter_only_fill = bpy.props.BoolProperty(name="Only affect fill ", description="Affect only strokes that have a fill active in used material", 
+    bpy.types.Scene.GPBF_filter_only_fill = bpy.props.BoolProperty(name="Only affect fill ", 
+    description="Affect only strokes that have a fill active in used material", 
     default=True)#buggy hen interacting with normal strokes
     
-    bpy.types.Scene.GPBF_filter_only_selected_mat = bpy.props.BoolProperty(name="Only selected mat", description="Affect only strokes that use current selected material", 
+    bpy.types.Scene.GPBF_filter_only_selected_mat = bpy.props.BoolProperty(name="Only selected mat", 
+    description="Affect only strokes that use current selected material", 
     default=False)
 
 
