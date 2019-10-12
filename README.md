@@ -115,21 +115,19 @@ Once modules are in this folder you can use them right away (no need to restart 
 
 #### Todo:
 
+- Show only fill materials in the combo box.
+
 - Replace the stroke in 3D view (adding a fill to a previous one make it pop to the top)
 
 - Make it orthographic view compatible (if possible with screen coordinates calculations).
 
 - Work with stroke without fill
 
-- add a curve pressure for tablet pen
+- Add a curve pressure for tablet pen (impossible to add mapping curve properties)
 
 - add thickness as a scene properties (exposed to UI if any)
 
-- add specific material path to use (automaticly added to material of the object if not listed)
-
 - maybe : add a way to handle rapid radius change (like 'F' for classic blender brush.)
-
-- in additive mode : add a shape when nothing is instersected
 
 - maybe reorder encountered shape list by screen space proximity to stroke starting point (might greatly slow down)
 
@@ -169,13 +167,18 @@ Once modules are in this folder you can use them right away (no need to restart 
 
 #### Done:
 
+- 2019-10-13 - 0.2.0:
+    - Material selector : add specific material path to use (automaticly added to material of the object if not listed)  
+    Allow to keep a dedicated material for fills (limitation, Show 'All' scene materials for now, not only grease pencil) 
+
 - 2019-10-12 - 0.1.8:
-  - Add undo step on each stroke, can now safely ctrl+Z after leaving modal without losing all last strokes !
-  - Changed panel from toolbar (T panel) to sidebar (N panel).
+    - In additive mode : Add a shape even when nothing is instersected (boy that was frustrating !)
+    - Add undo step on each stroke, can now safely ctrl+Z after leaving modal without losing all last strokes !
+    - Changed panel from toolbar (T panel) to sidebar (N panel).
 
 
-- test for more precision : Upscale the points coordinates and the empty numpy array before tracing the the circles in the numpy array, then trace and downscale.
-- omit final point in shape on gp stroke creation.
+- More precision : Upscale the points coordinates and the empty numpy array before tracing the the circles in the numpy array, then trace and downscale.
+- Omit final point in shape on gp stroke creation.
 - add pressure control for tablets
 
 - add/substract (erase) stroke - (shapely)

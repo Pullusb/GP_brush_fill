@@ -19,7 +19,7 @@ bl_info = {
 "name": "Brush fill",
 "description": "Add a brush to paint flat grease pencil fills and add/erase existing strokes",
 "author": "Samuel Bernou",
-"version": (0, 1, 8),
+"version": (0, 2, 0),
 "blender": (2, 80, 0),
 "location": "Select a grease pencil object > 3D view > toolbar > brush fill (+shift for add, +alt for erase)",
 "warning": "This addon need modules opencv and shapely to work",
@@ -363,7 +363,9 @@ def gp_draw(brush, mode='NEW'):
     if not layer:
         if len(gpl): layer=gpl[0]
     if not layer:#create one ?> gpl.new('GP_Layer_fill')#,set_active=True#default
-        return 'No layer to draw in'
+        bpy.ops.gpencil.layer_add()
+        layer = gpl.active
+        # return 'No layer to draw in'
 
     frame = layer.active_frame
     if scn.GPBF_use_fill_layer:#Do things on 'fill' layers only
@@ -383,7 +385,19 @@ def gp_draw(brush, mode='NEW'):
         frame = layer.frames.new(scn.frame_current, active=True)
     
     #material info initialisation
-    mat_id = None
+    mat_id = None #None set to object GP active material later
+
+    if scn.GPBF_override_material:#property just hold the name as string
+        mat_id = gp.materials.find(scn.GPBF_override_material)
+        if mat_id < 0:#-1 if not found
+            mat_id = None
+            the_mat = bpy.data.materials.get(scn.GPBF_override_material)
+            if the_mat: # auto-add material to material slot
+                print(f'Automatically appended material "{scn.GPBF_override_material}" to object "{obj.name}" data')
+                gp.materials.append(the_mat)
+                mat_id = gp.materials.find(scn.GPBF_override_material)#refind right after append
+                if mat_id < 0:
+                    mat_id = None#just in case it did not work
 
     warn = []
     
@@ -1073,7 +1087,7 @@ class GP_PT_brush_fill_panel(bpy.types.Panel):
         layout.prop(context.scene, 'GPBF_radius')
         layout.prop(context.scene, 'GPBF_spacing')
 
-        # Here eventually put a material selector for fill only...
+        layout.prop_search(context.scene, "GPBF_override_material",  bpy.data, "materials")#material selector for fill only...
 
         # fill layer painting option
         layout.prop(context.scene, 'GPBF_use_fill_layer')
@@ -1131,7 +1145,7 @@ GPBF_addon_prefs
 addon_keymaps = []
 
 def register():
-    #properties basic settings
+    ## properties basic settings
     bpy.types.Scene.GPBF_radius = bpy.props.IntProperty(name="Radius", 
     description="Radius of the fill brush\nUse [/], W/E, numpad -/+ or mousewheel down/up to modify during draw", 
     default=12, min=1, max=500, soft_min=0, soft_max=300, step=1)#, options={'HIDDEN'}#subtype = 'PIXEL' ?
@@ -1140,12 +1154,12 @@ def register():
     description="Spacing of the fill brush along draw movement\nUse S/D to modify during draw", 
     default=2, min=0, max=100, soft_min=1, soft_max=50, step=1)#, options={'HIDDEN'}#subtype = 'PIXEL' ?
 
-    #paint option
+    ## paint option
     bpy.types.Scene.GPBF_use_fill_layer = bpy.props.BoolProperty(name="Paint on fill layer", 
     description="If not 'fill' in layer name, add new strokes to a layer 'active_layer_name' + '_fill', create if necessary", 
     default=False)
 
-    #quality settings
+    ## quality settings
     bpy.types.Scene.GPBF_resolution_factor = bpy.props.IntProperty(name="Definition multiply", 
     description="More precise painting, add definition at the cost of speed (at the moment of releasing pencil).\nVirtually upscale pixel resolution by given factor (before converting pixels to polygons)\n/!\ You should lower approximation as you increase this value", 
     default=4, min=1, max=20, soft_min=1, soft_max=12, step=1)
@@ -1155,7 +1169,7 @@ def register():
     default=10, min=0, max=1000, soft_min=0, soft_max=100, step=1, precision=1, subtype='NONE', unit='NONE')
     # realvalues : default=0.0015, min=0.0, max=0.1, soft_min=0.0014, soft_max=0.05, step=0.01, precision=4
 
-    #filter settings
+    ## filter settings
     bpy.types.Scene.GPBF_use_crossed_mat = bpy.props.BoolProperty(name="Keep existing material", 
     description="In additive or eraser mode, take the material of crossed object when recreating the line\n/!\ If multiple material crossed this will be random !",
     default=False)
@@ -1168,13 +1182,15 @@ def register():
     description="Affect only strokes that use current selected material", 
     default=False)
 
+    ##material selector
+    bpy.types.Scene.GPBF_override_material = bpy.props.StringProperty(name="Fill material",
+    description="If specified, use this material only for the brush fill\nelse use active material\n(limitation : does not follow material name change)")
 
-
-    #class
+    ## class
     for cls in classes:
         bpy.utils.register_class(cls)
 
-    #keymap
+    ## keymap
     if get_addon_prefs().GPBF_register_shortcut_default:
         kcfg = bpy.context.window_manager.keyconfigs.addon
         if kcfg:
@@ -1201,6 +1217,7 @@ def unregister():
     del bpy.types.Scene.GPBF_filter_only_selected_mat
     del bpy.types.Scene.GPBF_resolution_factor
     del bpy.types.Scene.GPBF_use_fill_layer
+    del bpy.types.Scene.GPBF_override_material
 
 
 if __name__ == "__main__":
