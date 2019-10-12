@@ -170,7 +170,6 @@ Once modules are in this folder you can use them right away (no need to restart 
 #### Done:
 
 - 2019-10-12 - 0.1.8:
-  - 
   - Add undo step on each stroke, can now safely ctrl+Z after leaving modal without losing all last strokes !
   - Changed panel from toolbar (T panel) to sidebar (N panel).
 
