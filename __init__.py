@@ -19,10 +19,10 @@ bl_info = {
 "name": "Brush fill",
 "description": "Add a brush to paint flat grease pencil fills and add/erase existing strokes",
 "author": "Samuel Bernou",
-"version": (0, 2, 0),
+"version": (0, 3, 0),
 "blender": (2, 80, 0),
 "location": "Select a grease pencil object > 3D view > toolbar > brush fill (+shift for add, +alt for erase)",
-"warning": "This addon need modules opencv and shapely to work",
+"warning": "Still unstable. This addon use external modules: opencv and shapely",
 "wiki_url": "https://github.com/Pullusb/GP_brush_fill",
 "category": "3D View"
 }
@@ -46,6 +46,21 @@ from gpu_extras.batch import batch_for_shader
 from gpu_extras.presets import draw_circle_2d
 
 from bpy.types import Operator
+
+### Try to auto-install external module
+
+## module_name, package_name
+DEPENDENCIES = {
+    # ('yaml', 'PyYAML'),
+    ('cv2', 'opencv-contrib-python'),
+    ('shapely', 'Shapely'),
+}
+
+from . import install_dependancies
+
+error = install_dependancies.pip_install_and_import(DEPENDENCIES)
+if error:
+    raise Exception('Cannot import modules (see console). Try restarting blender as admin') from error
 
 # External module import
 import cv2#openCV
@@ -196,7 +211,7 @@ def get_addon_prefs():
     addon_name = os.path.splitext(__name__)[0]
     preferences = bpy.context.preferences
     addon_prefs = preferences.addons[addon_name].preferences
-    return (addon_prefs)
+    return addon_prefs
 
 def transfer_value(Value, OldMin, OldMax, NewMin, NewMax):
     return (((Value - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
@@ -286,7 +301,10 @@ def add_proj_stroke(s, frame, plane_co, plane_no, mat_id=None):
     ns.points.add(pts_to_add)
     #set coordinate
     ns.points.foreach_set('co', coords_3d_flat)
-    
+
+    ## !!!-> Super dirty way to force visual update... (add and kill one point)
+    ns.points.add(1)
+    ns.points.pop()
 
 
 def add_proj_multiple_strokes(stroke_list, gp=None, layer=None, use_current_frame=True, plane_co=None, plane_no=None, mat_id=None):
@@ -331,8 +349,15 @@ def add_proj_multiple_strokes(stroke_list, gp=None, layer=None, use_current_fram
             s = s[:,0] #kill the array extra dimension
 
         # print('\n\n\ns[0], s[-1]: ', s[0], s[-1])
-        if s[0][0] == s[-1][0] and s[0][1] == s[-1][1]: #on arrays can't do if " [562. 352.] == [562. 352.]: "
+        
+        if len(s) < 3:
+            continue
+
+        if s[0][0] == s[-1][0] and s[0][1] == s[-1][1]: # on arrays can't do if " [562. 352.] == [562. 352.]: "
             s = s[:-1]#slice off last point if same as first (no need to close)
+        
+        # if not len(s):# recheck, eventually slicing of last point result in a single point...
+        #     continue
         
         add_proj_stroke(s, target_frame, plane_co, plane_no, mat_id=mat_id)
 
@@ -565,7 +590,7 @@ def gp_draw(brush, mode='NEW'):
             for poly in fused:
                 new.append(np.array(poly.exterior.coords))
 
-        if use_intersected_stroke_normal:#override planar projection settings
+        """ if use_intersected_stroke_normal:#override planar projection settings
             ### get intersected stroke point and normal
             a,b,c = pshapes[0][2].points[0].co, pshapes[0][2].points[1].co, pshapes[0][2].points[-2].co
             plane_co = a
@@ -575,7 +600,7 @@ def gp_draw(brush, mode='NEW'):
             if cross_vec == Vector((0, 0, 0)):
                 mess = 'Problem, Normal of first intersect stroke is evaluated as Vector(0,0,0)'
                 print(mess)
-                return mess
+                return mess """
 
 
         # Check Angle from view
@@ -697,11 +722,15 @@ def draw_callback_px(self, context):
 
 
 class GP_OT_draw_fill(bpy.types.Operator):
-    """Draw with the mouse"""
+    """Draw fills like a pixel brush"""
     bl_idname = "view3d.gp_fill_brush_draw"
     bl_label = "Brush fill"
     bl_description = "Draw/add/erase filled stroke.\nShortcuts: ctrl+shift+F\nUse shift to add, alt to erase\nChange radius with mousewheel or []"
     bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object.type == 'GPENCIL'
 
     pressed_key = 'NOTHING'
     pressed_alt = False
@@ -903,14 +932,14 @@ class GP_OT_draw_fill(bpy.types.Operator):
             #return {'FINISHED'}
 
         #change brush size
-        if event.type in {'NUMPAD_MINUS', 'LEFT_BRACKET', 'W', 'WHEELDOWNMOUSE'}:
+        if event.type in {'NUMPAD_MINUS', 'LEFT_BRACKET', 'X', 'WHEELDOWNMOUSE'}:
             if event.value == 'PRESS':
                 scn.GPBF_radius -= 1
                 if scn.GPBF_radius < 1:
                     #force minimal radius value to 1px... might be better way to do this
                     scn.GPBF_radius = 1
 
-        if event.type in {'NUMPAD_PLUS', 'RIGHT_BRACKET', 'E', 'WHEELUPMOUSE'}:
+        if event.type in {'NUMPAD_PLUS', 'RIGHT_BRACKET', 'C', 'WHEELUPMOUSE'}:
             if event.value == 'PRESS':
                 scn.GPBF_radius += 1
 
@@ -930,8 +959,8 @@ class GP_OT_draw_fill(bpy.types.Operator):
             # context.window_manager.event_timer_remove(self.draw_event)
             # print('STOPPED')
             bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
-
-
+            context.area.tag_redraw()
+            ## find a way to update
             return {'CANCELLED'}
 
         """### keycode printer
@@ -943,80 +972,64 @@ class GP_OT_draw_fill(bpy.types.Operator):
 
 
     def invoke(self, context, event):
-        # print('\nSTARTED')
-
-        """#problem, import are not transfered to modal. just rely on classic import...
-        # here check if opencv and shapely are Ok
-        module_missing = []
-        import importlib
-        if not importlib.util.find_spec("cv2"): module_missing.append('cv2')
-        if not importlib.util.find_spec("shapely"): module_missing.append('shapely')
-        if module_missing:
-            mess = 'Missing modules ' + ' and '.join(module_missing)
-            self.report({'ERROR'}, mess)#WARNING, INFO
-            bpy.context.window_manager.popup_menu(missing_module_popup_panel, title="Modules", icon='INFO')
+        if context.area.type != 'VIEW_3D':
+            self.report({'WARNING'}, "View3D not found, cannot run operator")
             return {'CANCELLED'}
-
-        #massive import
-        import cv2#openCV
-        import shapely### shapely
-        from shapely.geometry import LineString, MultiPoint, Point, Polygon, MultiPolygon
-        from shapely.ops import split, cascaded_union
-        """
+        
         if not context.area.spaces[0].region_3d.is_perspective:
             self.report({'ERROR'}, "Impossible to paint in orthographic view")
             return {'CANCELLED'}
-
-        if context.area.type == 'VIEW_3D':
-            args = (self, context)
-            # Add the region OpenGL drawing callback
-            # draw in view space with 'POST_VIEW' and 'PRE_VIEW'
-            self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px, args, 'WINDOW', 'POST_PIXEL')
-            #timer time
-            # self.draw_event = context.window_manager.event_timer_add(0.1, window=context.window)
-            
-            # paint settings
-            prefs = get_addon_prefs()
-            self.paint_color = prefs.GPBF_paint_color#(0.0, 0.5, 0.5, 1.0)
-            if prefs.GPBF_use_material_color:
-                if context.object.active_material.is_grease_pencil:
-                    if context.object.active_material.grease_pencil.show_fill:
-                        self.paint_color = tuple([i+0.15 for i in context.object.active_material.grease_pencil.fill_color[:3]] + [0.8])
-
-            self.crosshair_color = prefs.GPBF_cursor_color#(0.6, 0.0, 0.0, 0.5)
-            ## crosshair resolution #should be adaptative according to radius and spacing...
-            # self.crosshair_resolution = 12#hardcode for now(4,8,12,16...) keep multiple of 4
-            self.crosshair_resolution = prefs.GPBF_brush_display_res * 4
-
-            # self.shapely_buffer_res = int(self.crosshair_resolution / 4)# convert to shapely buffer res (-> number * 4)
-
-            #self.crosshair_indices = [(0,i+1, i+2) for i in range(resolution*4-1)]+[(0,resolution*4, 1)]
-            self.crosshair_indices = [(0,i+1, i+2) for i in range(self.crosshair_resolution-1)] + [(0,self.crosshair_resolution, 1)]
-            #print(self.crosshair_indices)
-            #print('[(0, 1, 2), (0, 2, 3), (0, 3, 4), (0, 4, 5), (0, 5, 6), (0, 6, 7), (0, 7, 8), (0, 8, 1)]')
-
-
-            self.mouse_path = [] #coordinate list of the mouse path
-            self.mouse = (0, 0) #actualised tuple of mouse coordinate
-            # self.reticule = [] #list ot point of the cicrle widget
-            self.indices = [] #all indices of stroke
-            self.vertices = [] #all vertices of stroke
-            self.distance = 0.0 #just initialise lenght of stroke
-            self.all_points = []
-            self.all_radius = []
-            
-            ### now scene properties :
-            ## self.radius = 10 #size of the brush 
-            ## self.spacing = 2 #define a spacing in px
-
-            #polygons handling
-            self.polygons = []
-
-            context.window_manager.modal_handler_add(self)
-            return {'RUNNING_MODAL'}
-        else:
-            self.report({'WARNING'}, "View3D not found, cannot run operator")
+        
+        if not context.object.active_material:
+            self.report({'ERROR'}, "No active material on active object")
             return {'CANCELLED'}
+            
+        args = (self, context)
+        # Add the region OpenGL drawing callback
+        # draw in view space with 'POST_VIEW' and 'PRE_VIEW'
+        self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px, args, 'WINDOW', 'POST_PIXEL')
+        #timer time
+        # self.draw_event = context.window_manager.event_timer_add(0.1, window=context.window)
+        
+        # paint settings
+        prefs = get_addon_prefs()
+        self.paint_color = prefs.GPBF_paint_color#(0.0, 0.5, 0.5, 1.0)
+        if prefs.GPBF_use_material_color:
+            if context.object.active_material and context.object.active_material.is_grease_pencil:
+                if context.object.active_material.grease_pencil.show_fill:
+                    self.paint_color = tuple([i+0.15 for i in context.object.active_material.grease_pencil.fill_color[:3]] + [0.8])
+
+        self.crosshair_color = prefs.GPBF_cursor_color#(0.6, 0.0, 0.0, 0.5)
+        ## crosshair resolution #should be adaptative according to radius and spacing...
+        # self.crosshair_resolution = 12#hardcode for now(4,8,12,16...) keep multiple of 4
+        self.crosshair_resolution = prefs.GPBF_brush_display_res * 4
+
+        # self.shapely_buffer_res = int(self.crosshair_resolution / 4)# convert to shapely buffer res (-> number * 4)
+
+        #self.crosshair_indices = [(0,i+1, i+2) for i in range(resolution*4-1)]+[(0,resolution*4, 1)]
+        self.crosshair_indices = [(0,i+1, i+2) for i in range(self.crosshair_resolution-1)] + [(0,self.crosshair_resolution, 1)]
+        #print(self.crosshair_indices)
+        #print('[(0, 1, 2), (0, 2, 3), (0, 3, 4), (0, 4, 5), (0, 5, 6), (0, 6, 7), (0, 7, 8), (0, 8, 1)]')
+
+
+        self.mouse_path = [] #coordinate list of the mouse path
+        self.mouse = (0, 0) #actualised tuple of mouse coordinate
+        # self.reticule = [] #list ot point of the cicrle widget
+        self.indices = [] #all indices of stroke
+        self.vertices = [] #all vertices of stroke
+        self.distance = 0.0 #just initialise lenght of stroke
+        self.all_points = []
+        self.all_radius = []
+        
+        ### now scene properties :
+        ## self.radius = 10 #size of the brush 
+        ## self.spacing = 2 #define a spacing in px
+
+        #polygons handling
+        self.polygons = []
+
+        context.window_manager.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
 
 
 class GPBF_addon_prefs(bpy.types.AddonPreferences):
@@ -1152,7 +1165,7 @@ def register():
 
     bpy.types.Scene.GPBF_spacing = bpy.props.IntProperty(name="Spacing", 
     description="Spacing of the fill brush along draw movement\nUse S/D to modify during draw", 
-    default=2, min=0, max=100, soft_min=1, soft_max=50, step=1)#, options={'HIDDEN'}#subtype = 'PIXEL' ?
+    default=2, min=1, max=100, soft_min=1, soft_max=50, step=1)#, options={'HIDDEN'}#subtype = 'PIXEL' ?
 
     ## paint option
     bpy.types.Scene.GPBF_use_fill_layer = bpy.props.BoolProperty(name="Paint on fill layer", 
