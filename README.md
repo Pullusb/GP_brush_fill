@@ -37,7 +37,7 @@ This modes have filter available in user interface (filter what types of grease 
 
 `esc` or `right-click` : Leave the modal
 
-`[/]`, `W/E`, `numpad -/+` or `mousewheel down/up` : change radius of the brush
+`[/]`, `X/C`, `numpad -/+` or `mousewheel down/up` : change radius of the brush
 
 `S/D` : Change spacing value
 
