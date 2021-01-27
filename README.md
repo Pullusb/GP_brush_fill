@@ -50,11 +50,11 @@ For now :
 - Only work in perspective view (tring in ortho view will raise an error message)
 - Impossible to erase plain stroke without fill (use native eraser for that)
 - No undo-stack
-- since everything eslse is lock, need to leave the modal with right clic or esc to perform other actions.
+- since everything else is lock, need to leave the modal with right click or esc to perform other actions.
 - Impossible to add holes in shapes when erasing
 - In additive/substractive mode, closing a draw shape (like a lasso) will englobe everything inside.
 - When merging shapes it deletes points informations (thickness/pressure/etc)
-- Generally keep in mind that it delete crossed strokes to create a new one (for the same reason, it can messup with the depth order of your fills).
+- Generally keep in mind that it delete crossed strokes to create a new one (for the same reason, it can messed up with the depth order of your fills).
 
 ### Important technical note
 
@@ -149,18 +149,18 @@ Once modules are in this folder you can use them right away (no need to restart 
     - maybe divide in two function or condition to check without object matrix applyed.
 
 - coplanar handling:
-    what to do when multiple strokes have coplanar points but not colanar between them ?
+    what to do when multiple strokes have coplanar points but not coplanar between them ?
     need project from view (on centroid or on selected point)
     need self make coplanar with average normal and point position.
     might need an option to "straighten" a stroke, rotate it on centroid (not project) so it fit chosen object axis
-    very optional: might be cool quantify "coplanarity" to allow coplanar-tolerance contitions.
+    very optional: might be cool quantify "coplanarity" to allow coplanar-tolerance conditions.
     very optional: align view to selected stroke normal
 
 
 #### Todo UI:
 - Display thickness
 
-- material selector (to specidy what material is gonna be use for the paint)
+- material selector (to specify what material is gonna be use for the paint)
     - material selector UI
         select a material that use the fill (if not selected)
         OR select a predefined brush (that will have a material locked)
@@ -172,14 +172,14 @@ Once modules are in this folder you can use them right away (no need to restart 
 
 - 0.3.0 - 2020-09-24:
 
-- feat: Dependancies fetch, try to auto-install modules
+- feat: Dependencies fetch, try to auto-install modules
 - fixes:
     - error if no material exists on active objects.
     - error when trying to evaluate en empty strokes
     - spacing of 1 minimum
 
 - 0.2.0 - 2019-10-13:
-    - Material selector : add specific material path to use (automaticly added to material of the object if not listed)  
+    - Material selector : add specific material path to use (automatically added to material of the object if not listed)  
     Allow to keep a dedicated material for fills (limitation, Show 'All' scene materials for now, not only grease pencil) 
 
 - 0.1.8 - 2019-10-12:
